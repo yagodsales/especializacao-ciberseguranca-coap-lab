@@ -25,7 +25,7 @@ Com isso:
 - o cliente passou a falar com o servidor via UDP;
 - o ambiente ficou mais simples para depuração e captura no Wireshark.
 
-### 5. Lab funcionando
+### 3. Lab funcionando
 
 O client passou a receber resposta corretamente, mostrando algo como:
 
@@ -38,7 +38,7 @@ Isso confirmou que:
 - o cliente estava conseguindo acessar o recurso `/time`;
 - a comunicação entre containers estava OK.
 
-### 7. Cliente em loop
+### 4. Cliente em loop
 
 Depois, ajustei o client para enviar requisições repetidas a cada 1 segundo.
 
@@ -48,7 +48,7 @@ Isso foi útil para:
 - gerar tráfego contínuo;
 - facilitar a observação dos pacotes no Wireshark.
 
-### 8. Captura no Wireshark
+### 5. Captura no Wireshark
 
 Para capturar o tráfego, vi que a melhor interface no Ubuntu é normalmente:
 
@@ -58,7 +58,7 @@ Para capturar o tráfego, vi que a melhor interface no Ubuntu é normalmente:
 
 Isso ajuda a enxergar o tráfego CoAP entre os containers.
 
-### 9. Acesso ao container
+### 6. Acesso ao container
 
 Ao no container que está rodando o client usando `docker exec -it ID /bin/bash`.
 
