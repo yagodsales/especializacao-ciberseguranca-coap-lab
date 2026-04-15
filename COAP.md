@@ -1,86 +1,94 @@
-# Guia de Laboratório: Protocolo CoAP com Máquinas Virtuais e Contiki-NG
+# Lab CoAP com Docker e Wireshark
 
-Este documento descreve dois métodos para montar um ambiente de testes para o protocolo CoAP (Constrained Application Protocol).
+## Objetivo
 
----
+Montar um lab local no Ubuntu com dois containers Docker usando o protocolo CoAP, um como **servidor** e outro como **cliente**, e acompanhar o tráfego no Wireshark.
 
-## 1. Laboratório com Máquinas Virtuais (VirtualBox ou VMware)
-*Focado em simular a comunicação entre sistemas operacionais completos ou Gateways.*
+## O que foi feito
 
-### Pré-requisitos
-*   **Virtualizador:** VirtualBox ou VMware.
-*   **SO:** 2 VMs Linux (Ubuntu/Debian).
-*   **Rede:** Ambas em modo **Placa Bridge** ou **Rede Interna** (mesmo segmento).
- 
-### Passo a Passo
-1.  **Instalação (em ambas as VMs):**
-    ```bash
-    sudo apt update
-    sudo apt install python3-pip -y
-    pip install aiocoap[all]
-    ```
+### 1. Estrutura inicial do lab
 
-2.  **Configuração do Servidor (VM 1):**
-    Crie o arquivo `server.py`:
-    ```python
-    import asyncio
-    import aiocoap.resource as resource
-    import aiocoap
+Criei uma topologia simples com:
 
-    class StatusResource(resource.Resource):
-        async def render_get(self, request):
-            return aiocoap.Message(payload=b"Servidor CoAP Ativo!")
+- `coap-server`: container que expõe um recurso CoAP.
+- `coap-client`: container que faz requisições para o servidor.
 
-    async def main():
-        root = resource.Site()
-        root.add_resource(['status'], StatusResource())
-        await aiocoap.Context.create_server_context(root)
-        await asyncio.get_running_loop().create_future()
+A ideia era validar comunicação CoAP dentro da rede do Docker e observar os pacotes no host Ubuntu.
 
-    if __name__ == "__main__":
-        asyncio.run(main())
-    ```
-    Execute: `python3 server.py`
+### 2. O CoAPthon
 
-3.  **Teste do Cliente (VM 2):**
-    Substitua `<IP_DA_VM1>` pelo endereço real da VM servidora:
-    ```bash
-    aiocoap-client get coap://<IP_DA_VM1>/status
-    ```
+Para simplificar o lab, usei a implementação do **CoAPthon**.
 
----
+Com isso:
 
-## 2. Laboratório com Contiki-NG e Cooja
-*Focado em simular redes de sensores de baixo consumo (IoT) e protocolos de malha (Mesh).*
+- o servidor passou a escutar em `0.0.0.0:5683`;
+- o cliente passou a falar com o servidor via UDP;
+- o ambiente ficou mais simples para depuração e captura no Wireshark.
 
-### Pré-requisitos
-*   **Docker** instalado na máquina hospedeira.
+### 5. Lab funcionando
 
-### Passo a Passo
-1.  **Baixar Imagem:**
-    ```bash
-    docker pull contiker/contiki-ng
-    ```
+O client passou a receber resposta corretamente, mostrando algo como:
 
-2.  **Iniciar o Cooja:**
-    ```bash
-    docker run --privileged -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix contiker/contiki-ng
-    # No terminal do container:
-    cd tools/cooja
-    ant run
-    ```
+- `Code: 69`
+- `Payload: 2026-04-15 20:26:01`
 
-3.  **Configurar Simulação:**
-    *   **File > New Simulation:** Dê um nome e crie.
-    *   **Servidor:** Motes > Add Motes > Create New Mote Type > Sky Mote. Selecione o código em `/examples/coap/coap-example-server/`. Compile e adicione 1 unidade.
-    *   **Cliente:** Repita o processo usando o código em `/examples/coap/coap-example-client/`.
-    *   **Execução:** Clique em **Start**. Acompanhe os logs na janela *Mote Output*.
+Isso confirmou que:
 
----
+- o servidor CoAP estava respondendo;
+- o cliente estava conseguindo acessar o recurso `/time`;
+- a comunicação entre containers estava OK.
 
-## 3. Monitoramento de Rede
-Para analisar os pacotes em qualquer um dos cenários:
-1.  Abra o **Wireshark**.
-2.  Selecione a interface de rede do laboratório.
-3.  Aplique o filtro: `coap`.
-4.  Observe os campos: *Confirmable (CON)*, *Code (GET/POST)*, *Token* e *Payload*.
+### 7. Cliente em loop
+
+Depois, ajustei o client para enviar requisições repetidas a cada 1 segundo.
+
+Isso foi útil para:
+
+- manter o container ativo;
+- gerar tráfego contínuo;
+- facilitar a observação dos pacotes no Wireshark.
+
+### 8. Captura no Wireshark
+
+Para capturar o tráfego, vi que a melhor interface no Ubuntu é normalmente:
+
+- `docker0`;
+- ou a bridge criada pelo Compose, como `br-64e0306b5254`;
+- `any` pode ser usada como teste.
+
+Isso ajuda a enxergar o tráfego CoAP entre os containers.
+
+### 9. Acesso ao container
+
+Ao no container que está rodando o client usando `docker exec -it ID /bin/bash`.
+
+Exemplo:
+
+```bash
+docker exec -it ID /bin/bash
+```
+
+
+Isso permite inspecionar o ambiente por dentro.
+
+## Resumo técnico
+
+### Componentes
+
+- Docker.
+- Docker Compose.
+- Python.
+- CoAPthon.
+- Wireshark.
+
+### Fluxo final
+
+1. Subir os containers com `docker compose up --build`.
+2. O servidor escuta na porta UDP 5683.
+3. O cliente faz GET em `/time`.
+4. O cliente repete a requisição a cada segundo.
+5. O tráfego é capturado no Wireshark na interface do Docker.
+
+## Conclusão
+
+No fim, o lab ficou funcional para estudo de CoAP em Docker e análise de tráfego no Wireshark.
