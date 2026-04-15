@@ -1,4 +1,4 @@
-# Lab CoAP com Docker e Wireshark
+# Lab COAP com Docker e Wireshark
 
 ## Objetivo
 
